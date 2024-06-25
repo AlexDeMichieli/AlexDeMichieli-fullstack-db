@@ -2,29 +2,32 @@ name: CI/CD Workflow
 
 on:
   pull_request:
-    types: [closed]
+    types: [closed]  # This workflow is triggered when a pull request is closed
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # This job runs on an Ubuntu latest environment
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # Checks-out your repository under $GITHUB_WORKSPACE
 
+      # Setup Node.js environment with version 20
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # Install project dependencies
       - name: Install dependencies
         run: npm ci
 
+      # Uncomment below steps to run tests
       # - name: Run tests
       #   run: npm test
 
   publish:
-    needs: build-and-test
+    needs: build-and-test  # This job needs the build-and-test job to complete successfully before it runs
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'  # This job runs if the branch ref is 'main'
     permissions:
       contents: write
       packages: write
@@ -34,28 +37,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Setup Node.js environment with version 20
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # Install project dependencies
       - name: Install dependencies
         run: npm ci
 
+      # Configure Git for commit
       - name: Configure Git
         run: |
           git config --global user.email "${{ secrets.GIT_USER_EMAIL }}"
           git config --global user.name "${{ secrets.GIT_USER_NAME }}"
 
+      # Bump version and create changelog
       - name: Bump Version and Create Changelog
         run: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
       
+      # Push changes to the repository
       - name: Push Changes
         run: |
           git push --follow-tags origin main
 
+      # Authenticate with npm and publish the package
       - name: Authenticate and Publish
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
@@ -64,20 +73,23 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   deploy:
-    needs: build-and-test
+    needs: build-and-test  # This job needs the build-and-test job to complete successfully before it runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # Setup Node.js environment with version 20
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # Install project dependencies
       - name: Install dependencies
         run: npm ci
 
+      # Deploy Prisma migrations
       - name: Deploy Prisma Migrations
         run: npx prisma migrate deploy
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}  # Database URL stored as a GitHub secret
